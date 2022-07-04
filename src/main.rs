@@ -26,7 +26,6 @@ async fn main() -> std::io::Result<()> {
 }
 
 fn container() -> Server {
-
     let port = CONTAINER_OPTIONS.lock().unwrap().clone().unwrap().port;
 
     let container = HttpServer::new(|| App::new().service(webhook_listen))
@@ -34,7 +33,7 @@ fn container() -> Server {
         .expect("Failed to spawn container")
         .run();
 
-    println!("Container spawned");
+    println!("Container spawned on port {port}");
     container
 }
 
@@ -43,7 +42,16 @@ fn kill_process() {
 
     match &mut *lock {
         Some(child) => match child.kill() {
-            Ok(()) => {}
+            Ok(()) => match child.wait() {
+                Ok(status) => {
+                    println!("Child exited with status: {status}");
+                }
+                Err(err) => {
+                    println!(
+                        "Child failed to exit properly with err {err}\nAttempting to continue"
+                    );
+                }
+            },
             Err(_) => {
                 println!("Child is already dead. Most likely crashed");
             }
@@ -56,9 +64,9 @@ fn kill_process() {
 
 fn pull() {
     fn pull_inner() -> Result<(), Box<dyn std::error::Error>> {
-        let output = Command::new("git").args(["reset", "--hard"]).output()?;
+        /*let output = Command::new("git").args(["reset", "--hard"]).output()?;
 
-        println!("Git reset:\n{}", String::from_utf8(output.stdout)?);
+        println!("Git reset:\n{}", String::from_utf8(output.stdout)?);*/
 
         let output = Command::new("git").args(["pull"]).output()?;
 
@@ -66,8 +74,7 @@ fn pull() {
             let stderr = String::from_utf8_lossy(&output.stderr);
 
             eprintln!(
-                "FATAL\n
-            Failed to pull from github. Git exited with message\n{}",
+                "FATAL\nFailed to pull from github. Git exited with message\n{}",
                 &stderr
             );
             exit(1);
@@ -84,8 +91,7 @@ fn pull() {
         Ok(_) => {}
         Err(err) => {
             eprintln!(
-                "FATAL\n
-                Failed to pull from github with err: {}",
+                "FATAL\nFailed to pull from github with err: {}",
                 &err
             );
         }
@@ -174,8 +180,7 @@ fn build() {
             }
             None => {
                 eprintln!(
-                    "FATAL\n
-                Container options are not loaded!"
+                    "FATAL\nContainer options are not loaded!"
                 );
             }
         }
@@ -188,8 +193,7 @@ fn build() {
         }
         Err(err) => {
             eprintln!(
-                "FATAL:\n
-                Failed to build with err {}",
+                "FATAL:\nFailed to build with err {}",
                 &err
             );
             exit(1);
@@ -226,8 +230,7 @@ fn spawn() {
         }
         Err(err) => {
             eprintln!(
-                "FATAL\n
-                Failed to spawn child with err {}",
+                "FATAL\nFailed to spawn child with err {}",
                 err
             );
             exit(1)
