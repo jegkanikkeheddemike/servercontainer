@@ -74,8 +74,7 @@ fn pull() {
             let stderr = String::from_utf8_lossy(&output.stderr);
 
             eprintln!(
-                "FATAL\nFailed to pull from github. Git exited with message\n{}",
-                &stderr
+                "FATAL\nFailed to pull from github. Git exited with message\n{stderr}",
             );
             exit(1);
         }
