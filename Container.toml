@@ -1,0 +1,7 @@
+port = "4001"
+build = [
+    "echo \"My build commands 1\"",
+    "neofetch",
+]
+
+run = "my build command"
