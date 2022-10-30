@@ -109,7 +109,10 @@ fn update_container_options() {
     fn parse(value: Value) -> Option<ContainerOptions> {
         let port = value["port"].as_integer()? as u16;
 
-        let build_attempts = value["build_attempts"].as_integer();
+        let build_attempts = match value.get("build_attempts") {
+            Some(value) => value.as_integer(),
+            None => None,
+        };
 
         let run_str = value["run"].as_str()?;
 
