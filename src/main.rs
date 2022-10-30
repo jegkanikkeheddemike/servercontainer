@@ -196,7 +196,7 @@ fn build() {
             Err(err) => err,
         };
         if i == attempts {
-            eprintln!("FATAL\nAll 10 build attempts failed, {err}");
+            eprintln!("FATAL\nAll {attempts} build attempts failed, {err}");
             exit(1);
         } else {
             eprintln!("Failed to build with err {}", &err);
