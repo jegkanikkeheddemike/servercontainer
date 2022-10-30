@@ -73,9 +73,7 @@ fn pull() {
         if !ExitStatus::success(&output.status) {
             let stderr = String::from_utf8_lossy(&output.stderr);
 
-            eprintln!(
-                "FATAL\nFailed to pull from github. Git exited with message\n{stderr}",
-            );
+            eprintln!("FATAL\nFailed to pull from github. Git exited with message\n{stderr}",);
             exit(1);
         }
 
@@ -89,10 +87,7 @@ fn pull() {
     match pull_inner() {
         Ok(_) => {}
         Err(err) => {
-            eprintln!(
-                "FATAL\nFailed to pull from github with err: {}",
-                &err
-            );
+            eprintln!("FATAL\nFailed to pull from github with err: {}", &err);
         }
     }
 }
@@ -102,6 +97,7 @@ struct ContainerOptions {
     port: u16,
     build_cmds: Vec<Vec<String>>,
     run_cmd: Vec<String>,
+    build_attempts: Option<i64>,
 }
 
 fn update_container_options() {
@@ -112,6 +108,8 @@ fn update_container_options() {
 
     fn parse(value: Value) -> Option<ContainerOptions> {
         let port = value["port"].as_integer()? as u16;
+
+        let build_attempts = value["build_attempts"].as_integer();
 
         let run_str = value["run"].as_str()?;
 
@@ -140,6 +138,7 @@ fn update_container_options() {
             run_cmd,
             port,
             build_cmds,
+            build_attempts,
         })
     }
 
@@ -178,24 +177,29 @@ fn build() {
                 }
             }
             None => {
-                eprintln!(
-                    "FATAL\nContainer options are not loaded!"
-                );
+                eprintln!("FATAL\nContainer options are not loaded!");
             }
         }
         Ok(())
     }
 
-    match build_inner() {
-        Ok(()) => {
-            println!("Build successful");
-        }
-        Err(err) => {
-            eprintln!(
-                "FATAL:\nFailed to build with err {}",
-                &err
-            );
+    //Attempts to build 10 times.
+    let container_option = CONTAINER_OPTIONS.lock().unwrap().clone();
+
+    let attempts = container_option.unwrap().build_attempts.unwrap_or(1);
+    for i in 0..attempts {
+        let err = match build_inner() {
+            Ok(()) => {
+                println!("Build successful");
+                return;
+            }
+            Err(err) => err,
+        };
+        if i == attempts {
+            eprintln!("FATAL\nAll 10 build attempts failed, {err}");
             exit(1);
+        } else {
+            eprintln!("Failed to build with err {}", &err);
         }
     }
 }
@@ -228,10 +232,7 @@ fn spawn() {
             *PROCESS.lock().unwrap() = Some(child);
         }
         Err(err) => {
-            eprintln!(
-                "FATAL\nFailed to spawn child with err {}",
-                err
-            );
+            eprintln!("FATAL\nFailed to spawn child with err {}", err);
             exit(1)
         }
     }
