@@ -1,5 +1,3 @@
-use httparse::Header;
-
 use crate::options::ContainerOptions;
 use std::io::{Error, Read};
 use std::net::TcpListener;
@@ -12,9 +10,9 @@ pub fn new_listener(options: &ContainerOptions) -> Result<Arc<TcpListener>, Erro
     Ok(Arc::new(listener))
 }
 
-pub fn read_push(listener: Arc<TcpListener>) {
+pub fn read_push(listener: Arc<TcpListener>, options: &ContainerOptions) {
     loop {
-        match parse_stream(listener.clone()) {
+        match parse_stream(listener.clone(), options) {
             Ok(value) => {
                 if value {
                     return;
@@ -29,7 +27,10 @@ pub fn read_push(listener: Arc<TcpListener>) {
     }
 }
 
-fn parse_stream(listener: Arc<TcpListener>) -> Result<bool, Box<dyn std::error::Error>> {
+fn parse_stream(
+    listener: Arc<TcpListener>,
+    options: &ContainerOptions,
+) -> Result<bool, Box<dyn std::error::Error>> {
     let (mut stream, _) = listener.accept()?;
 
     let mut final_buffer = vec![];
@@ -60,8 +61,26 @@ fn parse_stream(listener: Arc<TcpListener>) -> Result<bool, Box<dyn std::error::
 
     request.parse(&final_buffer[..])?;
 
-    let header_str = format!("{request:#?}");
+    for header in headers {
+        if header.name.eq("X-Hub-Signature-256") {
+            match &options.secret_key {
+                Some(key) => {
+                    let eq = String::from_utf8(header.value.to_vec())?.eq(key);
+                    if !eq {
+                        println!("Recieved key is NOT same as provided key. Refusing connection");
+                    }
+                    return Ok(eq);
+                }
+                None => {
+                    println!("Webhook has secret key, but container does not verify it. Use secret = \"SHA256={{key}}\"");
+                    return Ok(true);
+                }
+            }
+        }
+    }
 
+    Ok(false)
+    /*
     let mut found_header = false;
     let mut content_length: usize = 0;
     for header in request.headers {
@@ -97,4 +116,5 @@ fn parse_stream(listener: Arc<TcpListener>) -> Result<bool, Box<dyn std::error::
     } else {
         Ok(false)
     }
+     */
 }

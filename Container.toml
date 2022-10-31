@@ -7,3 +7,5 @@ build = [
 build_attemps = 19
 
 run = ["./target/release/servercontainer"]
+
+secret = "sha256="

@@ -67,7 +67,7 @@ fn main() {
 
     //Wait until received a valid http post
     loop {
-        push_listener::read_push(listener.clone());
+        push_listener::read_push(listener.clone(), &options);
 
         build_version = match build::build_child(&options, build_version) {
             Ok(build_version) => build_version,

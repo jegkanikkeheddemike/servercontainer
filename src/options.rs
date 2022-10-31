@@ -9,6 +9,7 @@ pub struct ContainerOptions {
     pub run_cmd: Vec<String>,
     pub build_attempts: u64,
     pub delayed_kill: bool,
+    pub secret_key: Option<String>,
 }
 
 pub fn parse_options() -> ContainerOptions {
@@ -78,11 +79,20 @@ pub fn parse_options() -> ContainerOptions {
         None => false,
     };
 
+    let secret_key = match value.get("secret") {
+        Some(value) => match value.as_str() {
+            Some(str) => Some(str.to_string()),
+            None => None,
+        },
+        None => None,
+    };
+
     ContainerOptions {
         port,
         build_cmds,
         run_cmd,
         build_attempts,
         delayed_kill,
+        secret_key,
     }
 }
