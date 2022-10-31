@@ -175,18 +175,22 @@ fn build() {
                             &build_cmd,
                             String::from_utf8_lossy(&output.stderr)
                         );
-                        println!("Attempting to continue");
+                        return Err(Box::new(std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            "Failed to execute build script",
+                        )));
                     }
                 }
             }
             None => {
                 eprintln!("FATAL\nContainer options are not loaded!");
+                exit(1);
             }
         }
         Ok(())
     }
 
-    //Attempts to build 10 times.
+    //Attempts to build n times.
     let container_option = CONTAINER_OPTIONS.lock().unwrap().clone();
 
     let attempts = container_option.unwrap().build_attempts.unwrap_or(1);
