@@ -1,6 +1,10 @@
+use httparse::Request;
+use sha256::digest;
+
 use crate::options::ContainerOptions;
+use std::fmt::Display;
 use std::io::{Error, Read};
-use std::net::TcpListener;
+use std::net::{TcpListener, TcpStream};
 use std::sync::Arc;
 
 pub fn new_listener(options: &ContainerOptions) -> Result<Arc<TcpListener>, Error> {
@@ -61,15 +65,20 @@ fn parse_stream(
 
     request.parse(&final_buffer[..])?;
 
-    for header in headers {
+    let body = get_body(&request, &final_buffer, &mut stream)?;
+
+    for header in &headers {
         if header.name.eq("X-Hub-Signature-256") {
             match &options.secret_key {
                 Some(key) => {
-                    let recieved_key = String::from_utf8(header.value.to_vec())?;
-                    let eq = recieved_key.eq(key);
+                    let recieved_hash = String::from_utf8(header.value.to_vec())?;
+
+                    let procided_hash = format!("sha256={}",digest(format!("{key}{body}")));
+
+                    let eq = recieved_hash.eq(&procided_hash);
                     if !eq {
-                        println!("Recieved key is NOT same as provided key. Refusing connection");
-                        println!("local: {key}, recieved: {recieved_key}");
+                        println!("Recieved hash is NOT same as provided hash. Refusing connection");
+                        println!("local: {procided_hash}, recieved: {recieved_hash}");
                     }
                     return Ok(eq);
                 }
@@ -80,12 +89,17 @@ fn parse_stream(
             }
         }
     }
+    Ok(true)
+}
 
-    Ok(false)
-    /*
+fn get_body(
+    request: &Request,
+    final_buffer: &Vec<u8>,
+    stream: &mut TcpStream,
+) -> Result<String, Box<dyn std::error::Error>> {
     let mut found_header = false;
     let mut content_length: usize = 0;
-    for header in request.headers {
+    for header in &*request.headers {
         if header.name == "Content-Length" {
             found_header = true;
             content_length = String::from_utf8(header.value.to_vec())?.parse()?;
@@ -98,7 +112,7 @@ fn parse_stream(
         let body_start = match str.find("\r\n\r\n") {
             Some(index) => index,
             None => {
-                return Ok(false);
+                return Err(Box::new(BodyError));
             }
         };
         let mut body = String::from(str.split_at(body_start + 4).1);
@@ -109,14 +123,19 @@ fn parse_stream(
 
             body = format!("{body}{}", String::from_utf8(rest_of_body_buffer)?);
         }
-
-        println!("body: \n{body}");
-
-        std::fs::write("./body_log", &format!("{body}\n{header_str}"))?;
-
-        Ok(true)
+        Ok(body)
     } else {
-        Ok(false)
+        Err(Box::new(BodyError))
     }
-     */
 }
+
+#[derive(Debug, Clone)]
+pub struct BodyError;
+
+impl Display for BodyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("No body found ")
+    }
+}
+
+impl std::error::Error for BodyError {}
