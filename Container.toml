@@ -1,7 +1,9 @@
 port = 4001
 build = [
-    "echo \"My build commands 1\"",
-    "neofetch",
+    ["cargo","build","--release"],
+    ["neofetch"],
 ]
 
-run = "echo $PATH"
+build_attemps = 19
+
+run = ["./target/release/servercontainer"]
