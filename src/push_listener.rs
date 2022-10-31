@@ -42,6 +42,8 @@ fn parse_stream(listener: Arc<TcpListener>) -> Result<bool, Box<dyn std::error::
         let mut headers = [httparse::EMPTY_HEADER; 64];
         let mut req = httparse::Request::new(&mut headers);
 
+        println!("{req:#?}");
+
         let status = match req.parse(&final_buffer[..]) {
             Ok(status) => status,
             Err(_) => return Ok(false),
@@ -78,7 +80,7 @@ fn parse_stream(listener: Arc<TcpListener>) -> Result<bool, Box<dyn std::error::
                 return Ok(false);
             }
         };
-        let mut body = String::from(str.split_at(body_start+4).1);
+        let mut body = String::from(str.split_at(body_start + 4).1);
 
         if body.len() != content_length {
             let mut rest_of_body_buffer = vec![0u8; content_length - body.len()];
