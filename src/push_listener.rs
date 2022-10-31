@@ -89,6 +89,8 @@ fn parse_stream(listener: Arc<TcpListener>) -> Result<bool, Box<dyn std::error::
 
         println!("body: \n{body}");
 
+        std::fs::write("./body_log", &body)?;
+
         Ok(true)
     } else {
         Ok(false)
