@@ -65,9 +65,11 @@ fn parse_stream(
         if header.name.eq("X-Hub-Signature-256") {
             match &options.secret_key {
                 Some(key) => {
-                    let eq = String::from_utf8(header.value.to_vec())?.eq(key);
+                    let recieved_key = String::from_utf8(header.value.to_vec())?;
+                    let eq = recieved_key.eq(key);
                     if !eq {
                         println!("Recieved key is NOT same as provided key. Refusing connection");
+                        println!("local: {key}, recieved: {recieved_key}");
                     }
                     return Ok(eq);
                 }
