@@ -69,6 +69,10 @@ fn main() {
     loop {
         push_listener::read_push(listener.clone(), &options);
 
+        if !options.delayed_kill {
+            kill_child(child.clone());
+        }
+
         build_version = match build::build_child(&options, build_version) {
             Ok(build_version) => build_version,
             Err(err) => {
@@ -76,8 +80,9 @@ fn main() {
                 exit(1);
             }
         };
-
-        kill_child(child.clone());
+        if options.delayed_kill {
+            kill_child(child.clone());
+        }
 
         let new_child = match spawn_child(&options, build_version) {
             Ok(child) => child,
